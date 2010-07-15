@@ -1,0 +1,16 @@
+
+IQEngines API objective-c wrapper brought to you buy:
+
+Big Nerds In Disguise   http://www.bnid.ca
+Robots And Pencils      http://hq.robotsandpencils.com/
+
+To use:
+
+1.  Add the four files to your project.
+
+2.  Download the awesome ASIHTTPRequest library here (and add to project as per instructions on site):
+  http://allseeing-i.com/ASIHTTPRequest/Setup-instructions
+3.  Download the amazing JSON objective-c parser from here (and follow instructions to add:
+   http://code.google.com/p/json-framework/downloads/list
+
+NOTE:  This code is still in beta and has yet to go through full testing.  If you have any changes please feel free to submit them to support@bnid.ca
