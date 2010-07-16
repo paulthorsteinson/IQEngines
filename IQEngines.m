@@ -210,6 +210,8 @@
 	
 	NSString *hash =  [self stringWithHexBytes:HMAC];
 	
+	[HMAC release];
+	
 	return hash;
 }
 
