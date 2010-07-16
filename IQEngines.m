@@ -10,7 +10,7 @@
 #import <CommonCrypto/CommonHMAC.h>
 #import "ASIFormDataRequest.h"
 #import "IQResult.h"
-
+ 
 // list methods that you don't want to be visible (pseudo private)
 @interface IQEngines()
 
@@ -22,7 +22,6 @@
 - (NSString *)stringValueOrBlank:(id)value;
 - (IQResult *)findRequestBySignature:(NSString *)signature;
 @end
-
 
 @implementation IQEngines
 @synthesize key, secret, pendingRequests, delegate, parser,updatePollDelayInSeconds;
