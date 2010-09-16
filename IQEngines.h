@@ -15,7 +15,7 @@
 
 // TODO: change param to proper object
 - (void)requestSucceeded:(IQResult *)result;
-- (void)requestFailed:(NSString *)errorMessage;
+- (void)iQRequestFailed:(NSString *)errorMessage;
 @end
 
 

@@ -1,6 +1,6 @@
 //
 //  IQEngines.m
-//  GenApiSig
+//  
 //
 //  Created by Paul Thorsteinson (paul@bnid.ca) & Michael J.Sikorsky (mj@robotsandpencils.com) on 10-07-05.
 //  Copyright 2010 Big Nerds In Disguise & Robots and Pencils Inc. All rights reserved.
@@ -10,22 +10,30 @@
 #import <CommonCrypto/CommonHMAC.h>
 #import "ASIFormDataRequest.h"
 #import "IQResult.h"
- 
+#import "UIImage+Resize.h"
+
+
+// to be safe we will aim to scale a few pixels under 640, the max limit for the API	
+#define kMaxPixels 636.0
+
 // list methods that you don't want to be visible (pseudo private)
 @interface IQEngines()
 
 - (NSString *)hmacSha1:(NSString *)data;
 - (NSString *)stringWithHexBytes:(NSData *)encryptedData;
 - (NSString *)getUTCFormatedDate;
+- (UIImage *)sizedImageToSpecs:(UIImage *)image;
 - (void)doAsyncCheckRequest;
 - (void)processResults:(NSArray *)results;
 - (NSString *)stringValueOrBlank:(id)value;
 - (IQResult *)findRequestBySignature:(NSString *)signature;
 @end
 
+
 @implementation IQEngines
 @synthesize key, secret, pendingRequests, delegate, parser,updatePollDelayInSeconds;
 
+#pragma mark Lifecycle
 
 - (id)initWithKey:(NSString *)yourKey andSecret:(NSString *)yourSecret
 {
@@ -50,11 +58,18 @@
 	[super dealloc];
 }
 
+#pragma mark Image Submission and polling
+
 - (NSString *)submitImageToIdentify:(UIImage *)image
-{
+{	
 	requestCounter++;
+	
+	// first lets make sure this bad boy is sized within limits
+	UIImage *resizedImage = [self sizedImageToSpecs:image];
+	
 	NSString *utcTimestampString = [self getUTCFormatedDate];
 	NSString *imgName = [NSString stringWithFormat:@"image#%d.jpg", requestCounter];
+	// note parameters must be ordered alphabetically
 	NSString *joinedParams = [NSString stringWithFormat:@"api_key%@img%@json1time_stamp%@", self.key, imgName, utcTimestampString];
 	
 	//NSLog(@"Params list %@", joinedParams);
@@ -67,7 +82,7 @@
 	[request setPostValue:self.key forKey:@"api_key"];
 	[request setPostValue:apiSig forKey:@"api_sig"];
 	
-	NSData *imgData = UIImageJPEGRepresentation(image, 0);	
+	NSData *imgData = UIImageJPEGRepresentation(resizedImage, 0);	
 	[request setPostValue:imgData forKey:@"img"];
 	[request setData:imgData withFileName:imgName andContentType:@"image/jpeg" forKey:@"img"];
 	
@@ -85,6 +100,38 @@
 	
 	return apiSig;
 	
+}
+
+// ensures image is < 640px in height and width, resizes proportionatly if needed
+- (UIImage *)sizedImageToSpecs:(UIImage *)image
+{	
+	
+	int width = image.size.width;
+	int height = image.size.height;
+	
+	// it is already within limits so return what was passed in
+	if (width < 640 && height < 640 ) {
+		return image; 
+	}
+	
+	// at least one size is over the limit, resize based on largest side
+	double adjustFactor;
+	if (width < height) {
+		//its height is bigger, bring it under limit
+		adjustFactor = (double)  kMaxPixels / height;
+	}else {
+		//its width is bigger, bring it under limits
+		adjustFactor = (double)  kMaxPixels / width;
+	}
+	
+	// maintain aspect
+	CGSize newSize; 
+	newSize.height = height * adjustFactor;
+	newSize.width = width * adjustFactor;
+	
+	//NSLog(@"Original w: %f   h: %f   (new) w: %f   h: %f", width, height, newSize.width, newSize.height);
+	
+	return [image resizedImage:newSize interpolationQuality:kCGInterpolationHigh];
 }
 
 - (void)doAsyncCheckRequest
@@ -106,6 +153,8 @@
 	
 }
 
+#pragma mark ASIHTTPRequest delegate methods
+
 - (void)requestFinished:(ASIHTTPRequest *)request{
 	// Use when fetching text data
 	NSString *responseString = [request responseString];
@@ -121,7 +170,7 @@
 		// at this point we will abort any image id attempts since we dont know which failed
 		[pendingRequests removeAllObjects];
 		if (delegate != nil) {
-			[delegate requestFailed:message];
+			[delegate iQRequestFailed:message];
 		}
 		
 		return;
@@ -134,6 +183,14 @@
 		[self performSelector:@selector(doAsyncCheckRequest) withObject:nil afterDelay:updatePollDelayInSeconds];
 	}
 		
+}
+
+- (void)requestFailed:(ASIHTTPRequest *)request{
+	NSError *error = [request error];
+	if ([error code] == 2) {
+		[request startAsynchronous];
+	}
+	NSLog(@"failed: %@", [error description]);
 }
 
 - (void)processResults:(NSArray *)results{
@@ -170,10 +227,7 @@
 		return nil;
 	}
 
-	
-						
 }
-
 
 
 - (NSString *)stringValueOrBlank:(id)value{
@@ -184,14 +238,6 @@
 		return (NSString *)value;
 	}
 
-}
-
-- (void)requestFailed:(ASIHTTPRequest *)request{
-	NSError *error = [request error];
-	if ([error code] == 2) {
-		[request startAsynchronous];
-	}
-	NSLog(@"failed: %@", [error description]);
 }
 
 - (NSString *)hmacSha1:(NSString *)data
